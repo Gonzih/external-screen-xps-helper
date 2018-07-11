@@ -21,17 +21,12 @@ func main() {
 	}
 
 	cmd := strings.ToUpper(os.Args[1])
-	var err error
 
 	switch cmd {
 	case "ON":
-		err = enableExternalScreens()
+		must(enableExternalScreens())
 	default:
-		err = disableExternalScreens()
-	}
-
-	if err != nil {
-		log.Fatal(err)
+		must(disableExternalScreens())
 	}
 }
 
