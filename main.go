@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -50,21 +51,26 @@ func runXrandrOn(target, format string) error {
 }
 
 func enableExternalScreens() error {
-	if isConnected(internalScreen) {
+	externalConnected := isConnected(externalScreen)
+	hdmiConnected := isConnected(hdmiScreen)
+
+	if (externalConnected || hdmiConnected) && isConnected(internalScreen) {
 		err := runXrandrOn(internalScreen, "xrandr --output %s --off")
 		if err != nil {
 			return err
 		}
+
+		time.Sleep(time.Second * 2)
 	}
 
-	if isConnected(externalScreen) {
+	if externalConnected {
 		err := runXrandrOn(externalScreen, "xrandr --output %s --fb 6880x2880 --panning 6880x2880 --auto --scale 2x2 --mode 3440x1440 --pos 0x0")
 		if err != nil {
 			return err
 		}
 	}
 
-	if isConnected(hdmiScreen) {
+	if hdmiConnected {
 		err := runXrandrOn(hdmiScreen, "xrandr --output %s --fb 3840x2160 --panning 3840x2160 --auto --scale 2x2 --mode 1920x1080 --pos 0x0")
 		if err != nil {
 			return err
@@ -90,6 +96,8 @@ func disableExternalScreens() error {
 	}
 
 	if isConnected(internalScreen) {
+		time.Sleep(time.Second * 2)
+
 		err := runXrandrOn(internalScreen, "xrandr --output %s --auto --scale 1x1 --mode 3840x2160 --pos 0x0 --fb 3840x2160 --panning 3840x2160")
 		if err != nil {
 			return err
