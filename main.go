@@ -16,6 +16,11 @@ const (
 	hdmiScreen     = "HDMI-1"
 )
 
+type R struct {
+	W int
+	H int
+}
+
 func main() {
 	if len(os.Args) == 0 {
 		log.Fatal("Please provide a command")
@@ -38,8 +43,31 @@ func isConnected(output string) bool {
 	return re.Match(shellOut)
 }
 
-func runXrandrOn(target, format string) error {
-	command := fmt.Sprintf(format, target)
+func XrandrRun(command string) error {
+	args := strings.Split(command, " ")
+	out, err := sh(args...)
+
+	if err != nil {
+		log.Print(string(out))
+	}
+
+	return err
+
+}
+
+func XrandrOff(target string) error {
+	template := "xrandr --output %s --off"
+	command := fmt.Sprintf(template, target)
+
+	return XrandrRun(command)
+}
+
+func XrandrOn(target string, scale int, resolution R) error {
+	template := "xrandr --output %s --fb %s --panning %s --auto --scale %s --mode %s --pos 0x0"
+	fb := fmt.Sprintf("%dx%d", resolution.W*scale, resolution.H*scale)
+	mode := fmt.Sprintf("%dx%d", resolution.W, resolution.H)
+	sc := fmt.Sprintf("%dx%d", scale, scale)
+	command := fmt.Sprintf(template, target, fb, fb, sc, mode)
 	args := strings.Split(command, " ")
 	out, err := sh(args...)
 
@@ -55,7 +83,7 @@ func enableExternalScreens() error {
 	hdmiConnected := isConnected(hdmiScreen)
 
 	if (externalConnected || hdmiConnected) && isConnected(internalScreen) {
-		err := runXrandrOn(internalScreen, "xrandr --output %s --off")
+		err := XrandrOff(internalScreen)
 		if err != nil {
 			return err
 		}
@@ -64,14 +92,14 @@ func enableExternalScreens() error {
 	}
 
 	if externalConnected {
-		err := runXrandrOn(externalScreen, "xrandr --output %s --fb 6880x2880 --panning 6880x2880 --auto --scale 2x2 --mode 3440x1440 --pos 0x0")
+		err := XrandrOn(externalScreen, 2, R{3440, 1440})
 		if err != nil {
 			return err
 		}
 	}
 
 	if hdmiConnected {
-		err := runXrandrOn(hdmiScreen, "xrandr --output %s --fb 3840x2160 --panning 3840x2160 --auto --scale 2x2 --mode 1920x1080 --pos 0x0")
+		err := XrandrOn(hdmiScreen, 2, R{1920, 1080})
 		if err != nil {
 			return err
 		}
@@ -82,14 +110,14 @@ func enableExternalScreens() error {
 
 func disableExternalScreens() error {
 	if isConnected(externalScreen) {
-		err := runXrandrOn(externalScreen, "xrandr --output %s --off")
+		err := XrandrOff(externalScreen)
 		if err != nil {
 			return err
 		}
 	}
 
 	if isConnected(hdmiScreen) {
-		err := runXrandrOn(hdmiScreen, "xrandr --output %s --off")
+		err := XrandrOff(hdmiScreen)
 		if err != nil {
 			return err
 		}
@@ -98,7 +126,7 @@ func disableExternalScreens() error {
 	if isConnected(internalScreen) {
 		time.Sleep(time.Second * 2)
 
-		err := runXrandrOn(internalScreen, "xrandr --output %s --auto --scale 1x1 --mode 3840x2160 --pos 0x0 --fb 3840x2160 --panning 3840x2160")
+		err := XrandrOn(internalScreen, 1, R{3840, 2160})
 		if err != nil {
 			return err
 		}
