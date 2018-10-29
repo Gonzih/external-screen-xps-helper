@@ -16,9 +16,29 @@ const (
 	hdmiScreen     = "HDMI-1"
 )
 
+type ScreenConfig struct {
+	Scale      float64
+	Resolution *R
+}
+
+var screens = map[string]*ScreenConfig{
+	externalScreen: &ScreenConfig{
+		Scale:      1,
+		Resolution: &R{3440, 1440},
+	},
+	internalScreen: &ScreenConfig{
+		Scale:      1,
+		Resolution: &R{1920, 1080},
+	},
+	hdmiScreen: &ScreenConfig{
+		Scale:      1,
+		Resolution: &R{2560, 1440},
+	},
+}
+
 type R struct {
-	W int
-	H int
+	W float64
+	H float64
 }
 
 func main() {
@@ -62,11 +82,13 @@ func XrandrOff(target string) error {
 	return XrandrRun(command)
 }
 
-func XrandrOn(target string, scale int, resolution R) error {
+func XrandrOn(target string, conf *ScreenConfig) error {
+	scale := conf.Scale
+	resolution := conf.Resolution
 	template := "xrandr --output %s --fb %s --panning %s --auto --scale %s --mode %s --pos 0x0"
-	fb := fmt.Sprintf("%dx%d", resolution.W*scale, resolution.H*scale)
-	mode := fmt.Sprintf("%dx%d", resolution.W, resolution.H)
-	sc := fmt.Sprintf("%dx%d", scale, scale)
+	fb := fmt.Sprintf("%.fx%.f", resolution.W*scale, resolution.H*scale)
+	mode := fmt.Sprintf("%.fx%.f", resolution.W, resolution.H)
+	sc := fmt.Sprintf("%.1fx%.1f", scale, scale)
 	command := fmt.Sprintf(template, target, fb, fb, sc, mode)
 	args := strings.Split(command, " ")
 	out, err := sh(args...)
@@ -92,14 +114,14 @@ func enableExternalScreens() error {
 	}
 
 	if externalConnected {
-		err := XrandrOn(externalScreen, 2, R{3440, 1440})
+		err := XrandrOn(externalScreen, screens[externalScreen])
 		if err != nil {
 			return err
 		}
 	}
 
 	if hdmiConnected {
-		err := XrandrOn(hdmiScreen, 2, R{1920, 1080})
+		err := XrandrOn(hdmiScreen, screens[hdmiScreen])
 		if err != nil {
 			return err
 		}
@@ -126,7 +148,7 @@ func disableExternalScreens() error {
 	if isConnected(internalScreen) {
 		time.Sleep(time.Second * 2)
 
-		err := XrandrOn(internalScreen, 1, R{3840, 2160})
+		err := XrandrOn(internalScreen, screens[internalScreen])
 		if err != nil {
 			return err
 		}
